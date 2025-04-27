@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>iPhone Hesap Makinesi</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: black;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #display {
+      font-size: 32px;
+      padding: 20px;
+      background-color: black;
+      color: white;
+      text-align: right;
+      border: none;
+      outline: none;
+    }
+    #buttons {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      padding: 10px;
+      background-color: black;
+    }
+    button {
+      font-size: 22px;
+      padding: 20px;
+      border: none;
+      border-radius: 10px;
+      background-color: #333;
+      color: white;
+      cursor: pointer;
+    }
+    button.operation {
+      background-color: #ff9f0a;
+      color: black;
+    }
+    button.function {
+      background-color: #555;
+      color: black;
+    }
+    #history {
+      background-color: black;
+      color: white;
+      overflow-y: auto;
+      height: 100px;
+      padding: 10px;
+      font-size: 14px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<input id="display" readonly>
+<div id="buttons"></div>
+<div id="history"></div>
+
+<script>
+  const buttonsLayout = [
+    ['7', '8', '9', '/'],
+    ['4', '5', '6', '*'],
+    ['1', '2', '3', '-'],
+    ['AC', '0', '.', '+'],
+    ['C', '🔬', '%', '='],
+    ['Tema', 'Geçmişi Sil', 'Geçmişi Gizle', 'Tam Ekran']
+  ];
+
+  let expression = '';
+  let scientificMode = false;
+  let lightMode = false;
+  let history = [];
+  let fullScreen = false;
+
+  const display = document.getElementById('display');
+  const buttonsContainer = document.getElementById('buttons');
+  const historyDiv = document.getElementById('history');
+
+  function updateDisplay() {
+    display.value = expression;
+  }
+
+  function addHistory(record) {
+    history.push(record);
+    historyDiv.innerHTML += record + '<br>';
+  }
+
+  function toggleTheme() {
+    lightMode = !lightMode;
+    document.body.style.backgroundColor = lightMode ? 'white' : 'black';
+    display.style.backgroundColor = lightMode ? 'white' : 'black';
+    display.style.color = lightMode ? 'black' : 'white';
+    historyDiv.style.backgroundColor = lightMode ? 'white' : 'black';
+    historyDiv.style.color = lightMode ? 'black' : 'white';
+    document.querySelectorAll('button').forEach(button => {
+      if (button.classList.contains('operation')) {
+        button.style.backgroundColor = lightMode ? '#ff9500' : '#ff9f0a';
+        button.style.color = lightMode ? 'white' : 'black';
+      } else if (button.classList.contains('function')) {
+        button.style.backgroundColor = lightMode ? '#bbb' : '#555';
+        button.style.color = lightMode ? 'white' : 'black';
+      } else {
+        button.style.backgroundColor = lightMode ? '#ddd' : '#333';
+        button.style.color = lightMode ? 'black' : 'white';
+      }
+    });
+  }
+
+  function buttonClick(btn) {
+    if (btn === 'AC') {
+      expression = '';
+    } else if (btn === 'C') {
+      expression = expression.slice(0, -1);
+    } else if (btn === '🔬') {
+      scientificMode = true;
+      buildScientificButtons();
+      return;
+    } else if (btn === 'Back') {
+      scientificMode = false;
+      buildStandardButtons();
+      return;
+    } else if (btn === '=') {
+      try {
+        let tempExpr = expression.replace(/√/g, 'Math.sqrt')
+                                .replace(/π/g, Math.PI)
+                                .replace(/sin/g, 'Math.sin')
+                                .replace(/cos/g, 'Math.cos')
+                                .replace(/tan/g, 'Math.tan')
+                                .replace(/log/g, 'Math.log10')
+                                .replace(/exp/g, 'Math.exp')
+                                .replace(/x²/g, '**2');
+        let result = eval(tempExpr);
+        addHistory(expression + " = " + result);
+        expression = result.toString();
+      } catch (e) {
+        expression = 'HATA';
+      }
+    } else if (btn === 'x²') {
+      try {
+        let value = eval(expression) || 0;
+        let result = Math.pow(value, 2);
+        addHistory(value + "² = " + result);
+        expression = result.toString();
+      } catch (e) {
+        expression = 'HATA';
+      }
+    } else if (btn === '%') {
+      try {
+        let value = eval(expression);
+        let result = value / 100;
+        addHistory(value + "% = " + result);
+        expression = result.toString();
+      } catch (e) {
+        expression = 'HATA';
+      }
+    } else if (btn === 'Tema') {
+      toggleTheme();
+      return;
+    } else if (btn === 'Geçmişi Sil') {
+      history = [];
+      historyDiv.innerHTML = '';
+      return;
+    } else if (btn === 'Geçmişi Gizle') {
+      historyDiv.style.display = (historyDiv.style.display === 'none') ? 'block' : 'none';
+      return;
+    } else if (btn === 'Tam Ekran') {
+      if (!fullScreen) {
+        document.documentElement.requestFullscreen();
+        fullScreen = true;
+      } else {
+        document.exitFullscreen();
+        fullScreen = false;
+      }
+      return;
+    } else {
+      expression += btn;
+    }
+    updateDisplay();
+  }
+
+  function buildButtons(layout) {
+    buttonsContainer.innerHTML = '';
+    layout.forEach(row => {
+      row.forEach(btn => {
+        let button = document.createElement('button');
+        button.innerText = btn;
+        if (['/', '*', '-', '+', '=', '%'].includes(btn)) {
+          button.classList.add('operation');
+        } else if (['AC', 'C', '🔬', 'Back', 'Tema', 'Geçmişi Sil', 'Geçmişi Gizle', 'Tam Ekran'].includes(btn)) {
+          button.classList.add('function');
+        }
+        button.onclick = () => buttonClick(btn);
+        buttonsContainer.appendChild(button);
+      });
+    });
+  }
+
+  function buildStandardButtons() {
+    buildButtons(buttonsLayout);
+  }
+
+  function buildScientificButtons() {
+    const sciLayout = [
+      ['sin(', 'cos(', 'tan(', '√('],
+      ['x²', 'log(', 'exp(', 'π'],
+      ['(', ')', 'AC', 'Back'],
+      ['7', '8', '9', '/'],
+      ['4', '5', '6', '*'],
+      ['1', '2', '3', '-'],
+      ['0', '.', '=', '+']
+    ];
+    buildButtons(sciLayout);
+  }
+
+  buildStandardButtons();
+</script>
+
+</body>
+</html>
